@@ -377,6 +377,32 @@ type NonVotingSpec struct {
 	MultiAZ `json:",inline"`
 }
 
+type NonVotingHiddenSpec struct {
+	Enabled                  bool                       `json:"enabled"`
+	Size                     int32                      `json:"size"`
+	VolumeSpec               *VolumeSpec                `json:"volumeSpec,omitempty"`
+	ReadinessProbe           *corev1.Probe              `json:"readinessProbe,omitempty"`
+	LivenessProbe            *LivenessProbeExtended     `json:"livenessProbe,omitempty"`
+	PodSecurityContext       *corev1.PodSecurityContext `json:"podSecurityContext,omitempty"`
+	ContainerSecurityContext *corev1.SecurityContext    `json:"containerSecurityContext,omitempty"`
+	Configuration            MongoConfiguration         `json:"configuration,omitempty"`
+
+	MultiAZ `json:",inline"`
+}
+
+type VotingHiddenSpec struct {
+	Enabled                  bool                       `json:"enabled"`
+	Size                     int32                      `json:"size"`
+	VolumeSpec               *VolumeSpec                `json:"volumeSpec,omitempty"`
+	ReadinessProbe           *corev1.Probe              `json:"readinessProbe,omitempty"`
+	LivenessProbe            *LivenessProbeExtended     `json:"livenessProbe,omitempty"`
+	PodSecurityContext       *corev1.PodSecurityContext `json:"podSecurityContext,omitempty"`
+	ContainerSecurityContext *corev1.SecurityContext    `json:"containerSecurityContext,omitempty"`
+	Configuration            MongoConfiguration         `json:"configuration,omitempty"`
+
+	MultiAZ `json:",inline"`
+}
+
 type MongoConfiguration string
 
 func (conf MongoConfiguration) GetOptions(name string) (map[interface{}]interface{}, error) {
@@ -481,6 +507,8 @@ type ReplsetSpec struct {
 	Configuration            MongoConfiguration         `json:"configuration,omitempty"`
 	ExternalNodes            []*ExternalNode            `json:"externalNodes,omitempty"`
 	NonVoting                NonVotingSpec              `json:"nonvoting,omitempty"`
+	NonVotingHidden          NonVotingHiddenSpec        `json:"nonvotinghidden,omitempty"`
+	VotingHidden             VotingHiddenSpec           `json:"votinghidden,omitempty"`
 }
 
 func (r *ReplsetSpec) ServiceName(cr *PerconaServerMongoDB) string {

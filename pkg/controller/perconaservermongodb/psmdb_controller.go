@@ -453,7 +453,42 @@ func (r *ReconcilePerconaServerMongoDB) Reconcile(ctx context.Context, request r
 				return reconcile.Result{}, err
 			}
 		}
+		if replset.NonVotingHidden.Enabled {
+			matchLabels["app.kubernetes.io/component"] = "nonVotingHidden"
+			_, err := r.reconcileStatefulSet(ctx, cr, replset, matchLabels, internalKey)
+			if err != nil {
+				err = errors.Errorf("reconcile nonVotingHidden StatefulSet for %s: %v", replset.Name, err)
+				return reconcile.Result{}, err
+			}
+		} else {
+			err := r.client.Delete(ctx, psmdb.NewStatefulSet(
+				cr.Name+"-"+replset.Name+"-nv-hidden",
+				cr.Namespace,
+			))
 
+			if err != nil && !k8serrors.IsNotFound(err) {
+				err = errors.Errorf("delete nonVotingHidden statefulset %s: %v", replset.Name, err)
+				return reconcile.Result{}, err
+			}
+		}
+		if replset.VotingHidden.Enabled {
+			matchLabels["app.kubernetes.io/component"] = "votingHidden"
+			_, err := r.reconcileStatefulSet(ctx, cr, replset, matchLabels, internalKey)
+			if err != nil {
+				err = errors.Errorf("reconcile votingHidden StatefulSet for %s: %v", replset.Name, err)
+				return reconcile.Result{}, err
+			}
+		} else {
+			err := r.client.Delete(ctx, psmdb.NewStatefulSet(
+				cr.Name+"-"+replset.Name+"-v-hidden",
+				cr.Namespace,
+			))
+
+			if err != nil && !k8serrors.IsNotFound(err) {
+				err = errors.Errorf("delete votingHidden statefulset %s: %v", replset.Name, err)
+				return reconcile.Result{}, err
+			}
+		}
 		err = r.removeOutdatedServices(ctx, cr, replset)
 		if err != nil {
 			err = errors.Wrapf(err, "failed to remove old services of replset %s", replset.Name)
@@ -967,6 +1002,60 @@ func (r *ReconcilePerconaServerMongoDB) reconcileMongodConfigMaps(ctx context.Co
 		if err != nil {
 			return errors.Wrap(err, "create or update nonvoting config map")
 		}
+		// nonvoting hidden
+		if !rs.NonVoting.Enabled {
+			continue
+		}
+
+		name = psmdb.MongodCustomConfigName(cr.Name, rs.Name+"-nv")
+		if rs.NonVoting.Configuration == "" {
+			if err := deleteConfigMapIfExists(ctx, r.client, cr, name); err != nil {
+				return errors.Wrap(err, "failed to delete nonvoting mongod config map")
+			}
+
+			continue
+		}
+
+		err := r.createOrUpdateConfigMap(ctx, cr, &corev1.ConfigMap{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      name,
+				Namespace: cr.Namespace,
+			},
+			Data: map[string]string{
+				"mongod.conf": string(rs.NonVoting.Configuration),
+			},
+		})
+		if err != nil {
+			return errors.Wrap(err, "create or update nonvoting config map")
+		}
+
+		// voting hidden
+		if !rs.NonVoting.Enabled {
+			continue
+		}
+
+		name = psmdb.MongodCustomConfigName(cr.Name, rs.Name+"-nv")
+		if rs.NonVoting.Configuration == "" {
+			if err := deleteConfigMapIfExists(ctx, r.client, cr, name); err != nil {
+				return errors.Wrap(err, "failed to delete nonvoting mongod config map")
+			}
+
+			continue
+		}
+
+		err := r.createOrUpdateConfigMap(ctx, cr, &corev1.ConfigMap{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      name,
+				Namespace: cr.Namespace,
+			},
+			Data: map[string]string{
+				"mongod.conf": string(rs.NonVoting.Configuration),
+			},
+		})
+		if err != nil {
+			return errors.Wrap(err, "create or update nonvoting config map")
+		}
+
 	}
 
 	return nil

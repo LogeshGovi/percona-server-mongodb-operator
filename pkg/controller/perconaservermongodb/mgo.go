@@ -36,6 +36,14 @@ func (r *ReconcilePerconaServerMongoDB) reconcileCluster(ctx context.Context, cr
 		replsetSize += replset.Arbiter.Size
 	}
 
+	if replset.NonVotingHidden.Enabled {
+		replsetSize += replset.NonVotingHidden.Size
+	}
+
+	if replset.VotingHidden.Enabled {
+		replsetSize += replset.VotingHidden.Size
+	}
+
 	if replsetSize == 0 {
 		return api.AppStateReady, nil
 	}
@@ -259,6 +267,23 @@ func (r *ReconcilePerconaServerMongoDB) reconcileCluster(ctx context.Context, cr
 			member.Tags = mongo.ReplsetTags{
 				"podName":     pod.Name,
 				"serviceName": cr.Name,
+				"nonVoting":   "true",
+			}
+		case "nonVotingHidden":
+			member.Hidden = true
+			member.Priority = 0
+			member.Tags = mongo.ReplsetTags{
+				"podName":     pod.Name,
+				"serviceName": cr.Name,
+				"hidden":      "true",
+				"nonVoting":   "true",
+			}
+		case "votingHidden":
+			member.Hidden = true
+			member.Tags = mongo.ReplsetTags{
+				"podName":     pod.Name,
+				"serviceName": cr.Name,
+				"hidden":      "true",
 				"nonVoting":   "true",
 			}
 		}
